@@ -1,0 +1,121 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+```{R, message=FALSE, warning=FALSE}
+options(tidyverse.quiet=TRUE)
+library(tidyverse)
+library(cluster)
+library(dendextend)
+library(factoextra)
+```
+
+```{r}
+trucks=read_csv("trucks.csv")
+str(trucks)
+summary(trucks)
+```
+
+```{r}
+ggplot(trucks,aes(x=Distance,y=Speeding))+
+  geom_point()
+```
+
+There does appear to be some natural clustering based on the ggplot visualization.
+
+```{r}
+trucks2=as.data.frame(trucks%>%select(-Driver_ID))
+```
+```{r}
+trucks2=scale(trucks2)
+summary(trucks2)
+```
+
+```{r}
+set.seed(1234)
+cluster1<-kmeans(trucks2,2)
+```
+
+```{r}
+fviz_cluster(cluster1,trucks2)
+```
+
+Two clusters looks a little forced. It looks more like it should be four.
+
+```{r}
+set.seed(123)
+fviz_nbclust(trucks2,kmeans,method="wss")
+```
+
+Look like possibly four is the best per this method.
+
+```{r}
+set.seed(123)
+fviz_nbclust(trucks2,kmeans,method="silhouette")
+```
+
+This one ALSO looks like four is optimal! There is a consensus between the two methods.
+
+```{r}
+set.seed(1234)
+cluster2<-kmeans(trucks2,4)
+cluster2
+fviz_cluster(cluster2,trucks2)
+```
+
+That was NOT how I expected this to look. Now it looks almost like maybe 5 would have been better? Cluster 1 (the salmon colored one) seems a little forced to me.
+
+```{r}
+wine=read_csv("wineprice.csv")
+str(wine)
+summary(wine)
+```
+
+```{r}
+wine2=as.data.frame(wine%>%select(-Year, -FrancePop))
+```
+```{r}
+wine2=scale(wine2)
+summary(wine2)
+```
+
+```{r}
+set.seed(123)
+fviz_nbclust(wine2,kmeans,method="wss")
+```
+
+Somewhere around five or six is what it looks like here, I think.
+
+```{r}
+set.seed(123)
+fviz_nbclust(wine2,kmeans,method="silhouette")
+```
+
+This method identifies five, so there is consensus.
+
+```{r}
+set.seed(1234)
+cluster2<-kmeans(wine2,5)
+cluster2
+fviz_cluster(cluster2,wine2)
+```
+
+```{r}
+m=c("average", "single", "complete", "ward")
+names(m)=c("average", "single", "complete", "ward")
+
+ac=function(x) {agnes(wine2, method=x)$ac}
+  map_dbl(m,ac)
+```
+
+```{r}
+hc=agnes(wine2,method="ward")
+pltree(hc,cex=0.6,hang=-1,main="Agglomerative Dendogram")
+```
+
+```{r}
+hc2=diana(wine2)
+pltree(hc2,cex=0.6,hang=-1,main="Diversive Dendogram")
+```
+

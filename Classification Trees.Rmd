@@ -1,0 +1,165 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+```{R, message=FALSE, warning=FALSE}
+options(tidyverse.quiet=TRUE)
+library(tidyverse)
+library(caret)
+library(rpart)
+library(rattle)
+library(RColorBrewer)
+```
+
+```{r}
+parole<-read_csv("parole.csv")
+```
+
+
+```{r}
+parole=parole%>% mutate(male=as_factor(as.character(male)))%>%
+  mutate(male=fct_recode(male,
+                           "male"="1",
+                           "female"="0"))
+```
+
+
+```{r}
+parole=parole%>% mutate(race=as_factor(as.character(race)))%>%
+  mutate(race=fct_recode(race,
+                           "white"="1",
+                           "otherwise"="2"))
+```
+
+```{r}
+parole=parole%>% mutate(state=as_factor(as.character(state)))%>%
+  mutate(state=fct_recode(state,
+                           "Other"="1",
+                           "Kentucky"="2",
+                           "Louisiana"="3",
+                           "Virginia"="4"))
+```
+
+```{r}
+parole=parole%>% mutate(crime=as_factor(as.character(crime)))%>%
+  mutate(crime=fct_recode(crime,
+                           "Other crime"="1",
+                           "larceny"="2",
+                           "drug-related"="3",
+                           "driving-related"="4"))
+```
+
+```{r}
+parole=parole%>% mutate(multiple.offenses=as_factor(as.character(multiple.offenses)))%>%
+  mutate(multiple.offenses=fct_recode(multiple.offenses,
+                           "multiple offenses"="1",
+                           "otherwise"="0"))
+```
+
+```{r}
+parole=parole%>% mutate(violator=as_factor(as.character(violator)))%>%
+  mutate(violator=fct_recode(violator,
+                           "violator"="1",
+                           "not violator"="0"))
+```
+
+```{r}
+set.seed(12345)
+train.rows=createDataPartition(y=parole$violator,p=0.7,list=FALSE)
+train=parole[train.rows,]
+test=parole[-train.rows,]
+```
+
+```{r}
+traintree=rpart(violator~.,train,method="class")
+fancyRpartPlot(traintree)
+```
+
+40 year old parolee from Louisiana who served a 5 year prison sentence? 
+If white: Not a violator - Because he is from Louisiana we go right, because he is white, we go left, which makes him a non-violaotor.
+Other: Violator Because he is from Lousianan we go right, because he his not white we go right againbecause he served 5 years we go left, because he is over 30 it lead to Violator.
+
+```{r}
+printcp(traintree)
+```
+
+```{r}
+traintree2 = prune(traintree,cp= traintree$cptable[which.min(traintree$cptable[,"xerror"]),"CP"])
+```
+
+The majority class is non-violators.
+
+```{r}
+traintreepred=predict(traintree,train,type="class")
+head(traintreepred)
+```
+
+```{r}
+confusionMatrix(traintreepred,train$violator,positive="violator")
+```
+
+```{r}
+testpred=predict(traintree,test,type="class")
+head(testpred)
+```
+
+
+```{r}
+confusionMatrix(testpred,test$violator,positive="violator")
+```
+
+```{r}
+Blood<-read_csv("Blood.csv")
+```
+
+
+```{r}
+Blood=Blood%>% mutate(DonatedMarch=as_factor(as.character(DonatedMarch)))%>%
+  mutate(DonatedMarch=fct_recode(DonatedMarch,
+                           "Yes"="1",
+                           "No"="0"))
+```
+
+```{r}
+set.seed(1234)
+train.rows=createDataPartition(y=Blood$DonatedMarch,p=0.7,list=FALSE)
+train2=Blood[train.rows,]
+test2=Blood[-train.rows,]
+```
+
+```{r}
+traintreeBlood=rpart(DonatedMarch~.,train2,method="class")
+fancyRpartPlot(traintreeBlood)
+```
+
+
+```{r}
+printcp(traintreeBlood)
+```
+
+
+```{r}
+traintreeBlood = prune(traintreeBlood,cp= traintreeBlood$cptable[which.min(traintreeBlood$cptable[,"xerror"]),"CP"])
+```
+
+```{r}
+traintreeBloodpred=predict(traintreeBlood,train2,type="class")
+head(traintreeBloodpred)
+```
+
+```{r}
+confusionMatrix(traintreeBloodpred,train2$DonatedMarch,positive="Yes")
+```
+
+```{r}
+testpredBlood=predict(traintreeBlood,test2,type="class")
+head(testpredBlood)
+```
+
+
+```{r}
+confusionMatrix(testpredBlood,test2$DonatedMarch,positive="Yes")
+```
+
+It looks like accuracy decreases from 81.3% to 75.45% between the training and testing data when I run these predictions. Sensitivity and specificity also go down. 
